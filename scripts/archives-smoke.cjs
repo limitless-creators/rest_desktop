@@ -1,0 +1,61 @@
+const {_electron:electron,expect}=require('@playwright/test'),fs=require('fs'),path=require('path'),assert=require('node:assert/strict'),{randomUUID,randomBytes}=require('crypto');
+const {protocol}=require('../electron/sync-file.cjs'),{mobileFiles}=require('../../rest_mobile_offline/mobile_app/lib/file-sync-mobile.cjs'),{tables}=require('../electron/schema.cjs');
+const b64=x=>Buffer.from(x).toString('base64'),unb64=x=>Buffer.from(x,'base64'),options={b64,unb64,random:randomBytes,tables},codec=protocol(options),mobile=mobileFiles(options);
+(async()=>{
+ const root=path.resolve('.smoke-data','archive-ui-'+Date.now());fs.mkdirSync(root,{recursive:true});
+ const rootFile=path.join(root,'full.restroot'),outFile=path.join(root,'windows.restsync'),inFile=path.join(root,'phone.restsync'),replyFile=path.join(root,'reply.restsync');
+ const env={...process.env,REST_DESKTOP_HEADLESS:'1',REST_DESKTOP_TEST_DATA:root};delete env.ELECTRON_RUN_AS_NODE;
+ const app=await electron.launch({executablePath:process.env.REST_SMOKE_EXE||require('electron'),args:process.env.REST_SMOKE_EXE?[]:['.'],env});
+ try{
+ const page=await app.firstWindow();await page.waitForSelector('input[type=email]');
+ const user=await page.evaluate(async()=>{
+  const a=window.restDesktop;await a.auth('signUp',{email:'archive@test.local',password:'password123',options:{data:{name:'Archive Test'}}});await a.auth('signInWithPassword',{email:'archive@test.local',password:'password123'});
+  await a.query({table:'company_settings',action:'upsert',payload:{company_name:'Archive Test',setup_complete:true}});
+  await a.query({table:'contacts',action:'insert',payload:{name:'Before root'}});
+  const asset=await a.attachment('upload',{mime:'application/pdf',bytes:new Uint8Array([37,80,68,70,45])});
+  await a.query({table:'expenses',action:'insert',payload:{merchant:'With attachment',amount:25,expense_date:'2026-09-27',receipt_image_url:asset.key}});
+  localStorage.setItem('invstock_tab','settings');return (await a.auth('getUser')).user;
+ });
+ const id=randomUUID(),key=b64(randomBytes(32)),limits=Object.fromEntries(['invoices','quotes','receipts','expenses','general_sales'].map(t=>[t,{start:1,end:1000}]));
+ await app.evaluate(({safeStorage},{root,id,key,limits,user,rootFile})=>{
+  const fs=process.getBuiltinModule('fs'),path=process.getBuiltinModule('path');fs.writeFileSync(path.join(root,'data','mobile-devices.enc'),safeStorage.encryptString(JSON.stringify({[id]:{userId:user.id,key,limits}})));
+ },{root,id,key,limits,user,rootFile});
+ await page.reload();await page.getByRole('button',{name:'Criar backup root',exact:true}).waitFor();
+ await app.evaluate(({dialog},file)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:file});},rootFile);
+ const opened=app.waitForEvent('window');await page.getByRole('button',{name:'Criar backup root',exact:true}).click();
+ const password=await opened;await password.getByLabel('Senha da conta',{exact:true}).fill('password123');await password.getByLabel('Senha do backup',{exact:true}).fill('archive-password123');await password.getByLabel('Repetir senha').fill('archive-password123');
+ await password.screenshot({path:'test-results/root-password-1.2.1.png'});
+ await password.getByRole('button',{name:'Criar cópia',exact:true}).click();
+ await expect.poll(()=>fs.existsSync(rootFile)).toBe(true);await page.getByText('Guardado: '+rootFile,{exact:true}).waitFor();
+ await page.getByRole('button',{name:'Exportar sincronização',exact:true}).scrollIntoViewIfNeeded();await page.screenshot({path:'test-results/archive-settings-1.2.1.png'});
+ await page.evaluate(async()=>{await window.restDesktop.query({table:'contacts',action:'insert',payload:{name:'After root'}});});
+ await app.evaluate(({dialog},file)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[file]});dialog.showMessageBox=async()=>({response:1});},rootFile);
+ const restoredPassword=app.waitForEvent('window');await page.getByRole('button',{name:'Restaurar backup root',exact:true}).click();
+ const restore=await restoredPassword;await restore.getByLabel('Senha do backup',{exact:true}).fill('archive-password123');await restore.getByRole('button',{name:'Continuar',exact:true}).click();
+ await page.waitForSelector('input[type=email]');
+ await page.evaluate(async()=>{await window.restDesktop.auth('signInWithPassword',{email:'archive@test.local',password:'password123'});localStorage.setItem('invstock_tab','settings');});
+ await page.reload();await page.getByRole('button',{name:'Exportar sincronização',exact:true}).waitFor();
+ assert.equal(await page.evaluate(async()=>(await window.restDesktop.query({table:'contacts'})).data.length),1);
+ await app.evaluate(({dialog},file)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:file});dialog.showMessageBox=async()=>({response:0});},outFile);
+ const selecting=app.waitForEvent('window');await page.getByRole('button',{name:'Exportar sincronização',exact:true}).click();
+ const select=await selecting;await select.getByLabel('Nome do celular 1').fill('Celular da loja');await select.screenshot({path:'test-results/device-selector-1.2.1.png'});await select.getByRole('button',{name:'Selecionar celular'}).click();
+ const savedName=await app.evaluate(({safeStorage},{root,id})=>{const fs=process.getBuiltinModule('fs'),path=process.getBuiltinModule('path');return JSON.parse(safeStorage.decryptString(fs.readFileSync(path.join(root,'data','mobile-devices.enc'))))[id].name;},{root,id});assert.equal(savedName,'Celular da loja');
+ const editing=app.waitForEvent('window');
+ await app.evaluate(({Menu})=>{const menu=Menu.getApplicationMenu().items.find(x=>x.label==='Celular');menu.submenu.items.find(x=>x.label==='Os meus celulares / editar nomes').click();});
+ const names=await editing;await expect(names.getByLabel('Nome do celular 1')).toHaveValue('Celular da loja');
+ await names.getByLabel('Nome do celular 1').fill('Alteração cancelada');await names.getByRole('button',{name:'Cancelar',exact:true}).click();
+ const unchanged=await app.evaluate(({safeStorage},{root,id})=>{const fs=process.getBuiltinModule('fs'),path=process.getBuiltinModule('path');return JSON.parse(safeStorage.decryptString(fs.readFileSync(path.join(root,'data','mobile-devices.enc'))))[id].name;},{root,id});assert.equal(unchanged,'Celular da loja');
+ await expect.poll(()=>fs.existsSync(outFile)).toBe(true);
+ const pc=codec.unpack(fs.readFileSync(outFile,'utf8'),key,id);assert.equal(pc.data.attachments.length,1);
+ const current=structuredClone(pc.data);current.contacts[0].name='From mobile file';
+ const binding={user,deviceId:id,limits},phone=mobile.exportFile({binding,base:pc.data,current,state:{lastPc:pc.sequence}},key,randomUUID());
+ fs.writeFileSync(inFile,phone.text);
+ await app.evaluate(({dialog},{inFile,replyFile})=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[inFile]});dialog.showSaveDialog=async()=>({canceled:false,filePath:replyFile});dialog.showMessageBox=async()=>({response:1});},{inFile,replyFile});
+ await page.getByRole('button',{name:'Importar sincronização',exact:true}).click();
+ await expect.poll(()=>fs.existsSync(replyFile),{timeout:20000}).toBe(true);
+ assert.equal(await page.evaluate(async()=>(await window.restDesktop.query({table:'contacts'})).data[0].name),'From mobile file');
+ const response=mobile.previewFile(fs.readFileSync(replyFile,'utf8'),key,{binding,base:pc.data,current,state:phone.state});
+ assert.equal(response.conflicts.length,0);assert.equal(response.packet.data.contacts[0].name,'From mobile file');assert.equal(response.packet.data.attachments.length,1);
+ console.log(JSON.stringify({passed:true,rootExport:true,rootRestore:true,pairingPreserved:true,syncExport:true,syncImport:true,reply:true,attachments:true}));
+ }finally{await app.close();}
+})().catch(e=>{console.error(e);process.exitCode=1;});

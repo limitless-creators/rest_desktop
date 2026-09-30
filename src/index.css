@@ -1,0 +1,173 @@
+@import "tailwindcss";
+
+/* Class-based dark mode for Tailwind v4 */
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Inter", sans-serif;
+  --font-display: "Montserrat", sans-serif;
+  --font-playfair: "Playfair Display", serif;
+
+  /* Custom Corporate Theme Colors */
+  --color-primary: #0c1c48;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #24325e;
+  --color-on-primary-container: #8d9bce;
+  --color-inverse-primary: #b7c5fa;
+
+  --color-secondary: #805522;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #fec487;
+  --color-on-secondary-container: #794f1d;
+
+  --color-tertiary: #2f1b00;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #4b2e00;
+  --color-on-tertiary-container: #c0955d;
+
+  --color-background-custom: #fbf8fd;
+  --color-on-background-custom: #1b1b1f;
+
+  --color-surface: #fbf8fd;
+  --color-surface-dim: #dbd9de;
+  --color-surface-bright: #fbf8fd;
+  --color-surface-variant: #e4e2e6;
+  --color-on-surface: #1b1b1f;
+  --color-on-surface-variant: #45464f;
+  
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f5f3f7;
+  --color-surface-container: #efedf1;
+  --color-surface-container-high: #eae7ec;
+  --color-surface-container-highest: #e4e2e6;
+  
+  --color-inverse-surface: #303034;
+  --color-inverse-on-surface: #f2f0f4;
+  --color-outline: #767680;
+  --color-outline-variant: #c6c6d0;
+  --color-surface-tint: #4f5c8b;
+
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+
+  /* Brand Spacing Rules */
+  --spacing-base: 8px;
+  --spacing-xs: 4px;
+  --spacing-sm: 12px;
+  --spacing-md: 24px;
+  --spacing-lg: 48px;
+  --spacing-xl: 80px;
+
+  /* Corporate Elevation & Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(12, 28, 72, 0.05);
+  --shadow-md: 0 4px 12px 0 rgba(12, 28, 72, 0.1);
+  --shadow-lg: 0 10px 25px -5px rgba(12, 28, 72, 0.1), 0 8px 10px -6px rgba(12, 28, 72, 0.1);
+
+  /* Precise Soft Corner Shapes (Conservative style) */
+  --radius-sm: 2px;
+  --radius-default: 4px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+}
+
+/* Custom Base Classes for Editorial Layout */
+body {
+  background-color: var(--color-background-custom);
+  color: var(--color-on-background-custom);
+  font-family: var(--font-sans);
+}
+
+/* Dark mode overrides */
+html.dark {
+  color-scheme: dark;
+}
+
+html.dark body {
+  background-color: #0d0f14;
+  color: #e2e4ea;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-playfair {
+  font-family: var(--font-playfair);
+}
+
+.hanken {
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+@keyframes dot-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-7px); opacity: 1; }
+}
+
+.dot-bounce {
+  animation: dot-bounce 1.2s ease-in-out infinite;
+}
+
+/* Custom transitions and interactive states */
+.transition-smooth {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animation-fade-in {
+  animation: fadeIn 0.15s ease-out forwards;
+}
+
+.animation-scale-up {
+  animation: scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: center;
+  will-change: transform, opacity;
+}
+
+/* Generic modal content helper to avoid layout collapsing when animating */
+.modal-content {
+  min-width: 320px;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  flex-shrink: 0;
+}
+
+.animation-slide-in {
+  animation: slideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+

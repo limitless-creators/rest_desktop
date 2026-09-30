@@ -1,0 +1,11 @@
+node_modules/
+dist/
+release/
+test-results/
+.smoke-data/
+.env*
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.restbackup
+vendor/
