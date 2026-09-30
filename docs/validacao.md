@@ -153,3 +153,40 @@ SHA-256: 5f79d8d5550bd9956e637a6574b1b20ce475f5b5856db43950b1ce59d418439c
 - Capturas: test-results/root-password-1.2.1.png e device-selector-1.2.1.png.
 - Instalador: REST-Desktop-1.2.1-Setup.exe, 114594591 bytes.
 - SHA-256: 436f7966db551f1c6803016629b3723b166ca6996a862ffe5a3062cd35ab0434.
+## Versão 1.2.2 — filtro de backups
+- 52 testes, TypeScript e build passaram.
+- UI fonte e aplicação empacotada: filtros de Ficheiro, Arquivos e Definições mostram .restroot e .restbackup; cancelamento preserva os dados.
+- Restauro de .restroot pelo menu Ficheiro e de .restbackup pelo fluxo unificado passaram; regressão de sincronização com anexos também passou.
+- Evidências: test-results/archives-ui-1.2.2.log e archives-packaged-1.2.2.log.
+- Instalador: REST-Desktop-1.2.2-Setup.exe, 114594751 bytes.
+- SHA-256: 7fd43198e06d2f881ff0a797e9efca60cdd8f8303b8d028b71e1dece2457913c.
+## Versão 1.2.3 — identidade por senha no restauro
+- 53 testes, TypeScript e compilação passaram.
+- UI fonte e aplicação empacotada passaram com uma primeira conta de teste e uma segunda conta a restaurar .restroot e .restbackup pela sua própria senha.
+- Senhas incorretas/ausentes e ausência de sessão foram rejeitadas sem substituir dados. Instalação vazia continua suportada.
+- Cópia automática anterior ao restauro funciona com conta comum; emparelhamentos e anexos verificados.
+- Evidências: test-results/archives-ui-1.2.3.log, archives-packaged-1.2.3.log, restore-identity-1.2.3.png.
+- Instalador: REST-Desktop-1.2.3-Setup.exe. SHA-256: b9047e6b36b6b380b8b464d4a8cf942f1c06885f79cbec2de4eac8041112eeac
+
+## Versão 1.3.0 — gestor de celulares
+- 58 testes, TypeScript e build passaram.
+- Gestor fonte e empacotado: pesquisa, histórico, temas claro/escuro, edição de nome, cancelamento/remoção, isolamento entre contas e proteção após logout passaram.
+- Protocolo real: remoção individual bloqueia a chave antiga e preserva o acesso dos restantes celulares.
+- Backup fonte e empacotado: histórico incluído/restaurado no root, registos de troca por arquivo e regressões anteriores passaram.
+- Evidências: test-results/device-manager-ui-1.3.0.log, device-manager-packaged-1.3.0.log, archives-ui-1.3.0.log, archives-packaged-1.3.0.log, device-manager-*-1.3.0.png.
+- Instalador: REST-Desktop-1.3.0-Setup.exe, 114600332 bytes.
+- SHA-256: 174c53805f4883acc382e63aa167dbe9ccf5f4427b787d9fe31dc5c58920fad2.
+## Windows 1.3.1 / mobile 1.1.2 — reautorizar celular removido
+- 63 testes Windows/protocolo e 10 testes mobile passaram; TypeScript em ambos e exportação Expo Android passaram.
+- Fluxo com o núcleo real mobile confirma documentos, anexos, pendências e números preservados; recusa, conta diferente, intervalos inválidos, conflito e resposta perdida verificados.
+- Modal mobile revisto em React Native Web, serviços nativos simulados: temas claro/escuro, cancelamento e espera pela autorização passaram. Teste num Android físico pendente; APK não gerado.
+- Gestor e backups na aplicação Windows empacotada passaram. Logs: device-manager-packaged-1.3.1.log e archives-packaged-1.3.1.log em test-results.
+- Instalador: REST-Desktop-1.3.1-Setup.exe, 114600884 bytes.
+- SHA-256: d3ef7fc0ed5dc3df46e54b8841ef9af58a9befc411220473e670ba39ee3e17c8.
+## Windows 1.4.0 — wizard personalizado
+- 63 testes, TypeScript, Vite e empacotamento NSIS passaram.
+- Aplicação empacotada testada offline, sem pedidos externos.
+- Ensaios nativos: slideshow alterna durante a instalação; abertura automática uma única vez; modo silencioso e reinício sem abertura.
+- Revisão visual interactiva completa pendente por indisponibilidade do serviço de controlo nativo.
+- Detalhes e comandos: instalador-personalizado-1.4.0.md.
+- Instalador: REST-Desktop-1.4.0-Setup.exe, 114937755 bytes. SHA-256: fbe57f97e8618f50fae4d953c42029a20671aedd88264fd3c4592b03100de686.

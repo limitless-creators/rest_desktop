@@ -9,3 +9,7 @@ test-results/
 *.sqlite-shm
 *.restbackup
 vendor/
+
+# Installer component sources and licences
+!build/vendor/
+!build/vendor/**

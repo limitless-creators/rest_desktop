@@ -61,8 +61,10 @@ module.exports = (Service) => {
     }
     return { created: true, path: dest };
   };
-  Service.prototype.restore = function (source, allowEmpty = false) {
-    if (!(allowEmpty && !this.db.prepare("SELECT id FROM users LIMIT 1").get())) this.admin();
+  Service.prototype.restore = function (source, allowEmpty = false, accountPassword) {
+    if (!(allowEmpty && !this.db.prepare("SELECT id FROM users LIMIT 1").get())) {
+      if(accountPassword !== undefined)this.verifyRootPassword(accountPassword);else this.admin();
+    }
     if (path.resolve(source) === path.resolve(this.filename))
       throw Error("Seleccione uma cópia de segurança.");
     if (fs.statSync(source).size > 2 * 1024 * 1024 * 1024)
@@ -108,7 +110,8 @@ module.exports = (Service) => {
       backupFolder,
       "before-restore-" + Date.now() + ".restbackup",
     );
-    if(this.user)this.backup(safety);else this.db.prepare("VACUUM INTO ?").run(safety);
+    this.db.prepare("VACUUM INTO ?").run(safety);
+    fs.writeFileSync(safety+".sha256",digest(fs.readFileSync(safety)));
     this.db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
     this.db.close();
     const previous = path.join(

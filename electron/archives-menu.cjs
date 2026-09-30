@@ -13,18 +13,19 @@ function passwordDialog(parent,creating){
   win.loadURL('data:text/html;charset=utf-8,'+encodeURIComponent(html));
  });
 }
-module.exports=function({window,call,root,trusted}){
+module.exports=function({window,call,root,trusted,restoreLegacy}){
  let busy=false;
  const protect=()=>{if(!safeStorage.isEncryptionAvailable())throw Error('A protecção de chaves do Windows não está disponível.');};
  const grantFile=path.join(root,'mobile-devices.enc');
  const grants=()=>{protect();return fs.existsSync(grantFile)?JSON.parse(safeStorage.decryptString(fs.readFileSync(grantFile))):{};};
  const writeAtomic=(file,data)=>{const temp=file+'.'+randomUUID()+'.tmp';try{fs.writeFileSync(temp,data,{flag:'wx'});fs.renameSync(temp,file);}finally{if(fs.existsSync(temp))fs.unlinkSync(temp);}};
  const wrap=fn=>async()=>{if(busy)throw Error('Outra operação de arquivo está em curso.');busy=true;try{return await fn();}finally{busy=false;}};
+ const record=(id,grant,type,options={})=>{try{require('./device-store.cjs').nativeStore(root).event(grant.userId,id,type,{name:grant.name,via:'file',...options});}catch(e){console.error('Histórico de celulares:',e.message);}};
  const stamp=()=>new Date().toISOString().replace(/[:.]/g,'-');
  async function exportFor(deviceId,grant){
   const choice=await dialog.showSaveDialog(window,{title:'Enviar atualização para o celular',defaultPath:'REST-Windows-'+stamp()+'.restsync',filters:[{name:'Sincronização REST',extensions:['restsync']}]});
   if(choice.canceled)return {canceled:true};
-  const result=await call('syncFileExport',deviceId,grant);writeAtomic(choice.filePath,result.text);return {path:choice.filePath};
+  const result=await call('syncFileExport',deviceId,grant);writeAtomic(choice.filePath,result.text);record(deviceId,grant,'fileExport');return {path:choice.filePath};
  }
  const rootExport=wrap(async()=>{
   const {user}=await call('auth','getUser');if(!user)throw Error('Entre primeiro na sua conta.');
@@ -35,26 +36,39 @@ module.exports=function({window,call,root,trusted}){
   const choice=await dialog.showSaveDialog(window,{title:'Guardar backup completo da instalação',defaultPath:'REST-Root-'+stamp()+'.restroot',filters:[{name:'Backup root REST',extensions:['restroot']}]});
   if(choice.canceled)return {canceled:true};
   await require('./mobile-menu.cjs').stop();
-  const extras={grants:grants(),preferences:await window.webContents.executeJavaScript("Object.fromEntries(Object.entries(localStorage).filter(([key])=>key.startsWith('invstock_')))")};
+  const extras={grants:grants(),deviceHistory:require('./device-store.cjs').nativeStore(root).audit(),preferences:await window.webContents.executeJavaScript("Object.fromEntries(Object.entries(localStorage).filter(([key])=>key.startsWith('invstock_')))")};
   const temp=choice.filePath+'.'+randomUUID()+'.tmp';
   try{await call('rootExport',temp,password,extras,accountPassword);fs.renameSync(temp,choice.filePath);}finally{if(fs.existsSync(temp))fs.unlinkSync(temp);}
   return {path:choice.filePath};
  });
  const rootRestore=wrap(async()=>{
-  await call('rootAccess');
-  const choice=await dialog.showOpenDialog(window,{title:'Restaurar instalação Windows',properties:['openFile'],filters:[{name:'Backup root REST',extensions:['restroot']}]});if(choice.canceled)return {canceled:true};
+  const access=await call('rootAccess');
+  const choice=await dialog.showOpenDialog(window,{title:'Restaurar cópia de segurança REST',properties:['openFile'],filters:[{name:'Cópias de segurança REST',extensions:['restroot','restbackup']},{name:'Backup completo protegido (.restroot)',extensions:['restroot']},{name:'Backup antigo (.restbackup)',extensions:['restbackup']}]});if(choice.canceled)return {canceled:true};
+  let accountPassword;
+  if(!access.empty){
+   const identity=await require('./custom-dialog.cjs')(window,{title:'Confirmar identidade',description:'Introduza a senha da conta atualmente aberta para autorizar o restauro. Esta operação substitui os dados de toda a instalação.',fields:[{id:'accountPassword',label:'Senha da conta',type:'password'}],submit:'Confirmar identidade'});
+   if(!identity)return {canceled:true};
+   accountPassword=identity.values?.accountPassword;
+   await call('verifyRootPassword',accountPassword);
+  }
+  const extension=path.extname(choice.filePaths[0]).toLowerCase();
+  if(extension==='.restbackup')return restoreLegacy(choice.filePaths[0],accountPassword);
+  if(extension!=='.restroot')throw Error('Selecione um arquivo .restroot ou .restbackup.');
   const password=await passwordDialog(window,false);if(!password)return {canceled:true};
-  const preview=await call('rootPreview',choice.filePaths[0],password);
+  const preview=await call('rootPreview',choice.filePaths[0],password,accountPassword);
   const answer=await dialog.showMessageBox(window,{type:'warning',title:'Restaurar backup root',message:'Substituir os dados de toda a instalação?',detail:preview.accounts+' conta(s), '+preview.attachments+' anexo(s). Criado em '+preview.createdAt+'. Será guardada uma cópia dos dados actuais. As contas e emparelhamentos serão restaurados.',buttons:['Cancelar','Restaurar'],defaultId:0,cancelId:0});
   if(answer.response!==1)return {canceled:true};
   protect();const encrypted=safeStorage.encryptString(JSON.stringify(preview.extras.grants||{}));
   await require('./mobile-menu.cjs').stop();
   if(fs.existsSync(grantFile))fs.copyFileSync(grantFile,grantFile+'.before-restore-'+Date.now());
   const oldGrants=fs.existsSync(grantFile)?fs.readFileSync(grantFile):null;
+  const historyFile=path.join(root,'mobile-history.enc');
+  const oldHistory=fs.existsSync(historyFile)?fs.readFileSync(historyFile):null;
+  if(oldHistory)fs.writeFileSync(historyFile+'.before-restore-'+Date.now(),oldHistory);
   writeAtomic(grantFile,encrypted);
   let result;
-  try{result=await call('rootRestore',choice.filePaths[0],password,preview.digest);}
-  catch(error){if(oldGrants)writeAtomic(grantFile,oldGrants);else if(fs.existsSync(grantFile))fs.unlinkSync(grantFile);throw error;}
+  try{writeAtomic(historyFile,safeStorage.encryptString(JSON.stringify(preview.extras.deviceHistory||{version:1,devices:{}})));result=await call('rootRestore',choice.filePaths[0],password,preview.digest,accountPassword);}
+  catch(error){if(oldHistory)writeAtomic(historyFile,oldHistory);else if(fs.existsSync(historyFile))fs.unlinkSync(historyFile);if(oldGrants)writeAtomic(grantFile,oldGrants);else if(fs.existsSync(grantFile))fs.unlinkSync(grantFile);throw error;}
   const preferences=Object.entries(preview.extras.preferences||{}).filter(([k,v])=>k.startsWith('invstock_')&&typeof v==='string');
   await window.webContents.executeJavaScript('for(const [k,v] of '+JSON.stringify(preferences)+')localStorage.setItem(k,v)');
   window.webContents.reload();return result;
@@ -75,17 +89,20 @@ module.exports=function({window,call,root,trusted}){
   const grant=grants()[envelope.deviceId];if(!grant||grant.userId!==user.id)throw Error('Este arquivo não pertence a um celular autorizado nesta conta.');
   const args={text,deviceId:envelope.deviceId,grant};
   const preview=await call('syncFilePreview',args);
-  if(preview.conflicts.length){await dialog.showMessageBox(window,{type:'warning',message:'Conflitos: nenhum dado será alterado.',detail:preview.conflicts.slice(0,10).map(c=>c.table+' · '+c.label).join('\n')+'\nReveja estes registos nos dois dispositivos e exporte novamente.'});return {canceled:true};}
+  if(preview.conflicts.length){record(envelope.deviceId,grant,'fileConflict');await dialog.showMessageBox(window,{type:'warning',message:'Conflitos: nenhum dado será alterado.',detail:preview.conflicts.slice(0,10).map(c=>c.table+' · '+c.label).join('\n')+'\nReveja estes registos nos dois dispositivos e exporte novamente.'});return {canceled:true};}
   const answer=await dialog.showMessageBox(window,{title:'Rever atualização',message:preview.already?'Este arquivo já foi importado.':preview.changes+' alterações e '+preview.attachments+' anexos.',detail:'Será criada uma cópia de segurança antes da importação. Depois guarde uma resposta para importar no celular e confirmar a sincronização.',buttons:['Cancelar',preview.already?'Continuar':'Importar'],cancelId:0,defaultId:1});if(answer.response!==1)return {canceled:true};
-  const result=await call('syncFileImport',{...args,expected:preview.digest});window.webContents.send('rest:sync-changed');
+  let result;try{result=await call('syncFileImport',{...args,expected:preview.digest});}
+  catch(e){record(envelope.deviceId,grant,'fileError');throw e;}
+  record(envelope.deviceId,grant,result.already?'fileDuplicate':'fileImport',{sync:!result.already,changes:result.changes});
+  window.webContents.send('rest:sync-changed');
   const reply=await dialog.showMessageBox(window,{message:'Atualização recebida. Guardar resposta para o celular?',detail:'Importe a resposta no celular para receber as alterações do PC e confirmar as alterações enviadas.',buttons:['Mais tarde','Guardar resposta'],defaultId:1,cancelId:0});
   if(reply.response===1)return {...result,...await exportFor(envelope.deviceId,grant)};
   return result;
  });
  for(const [name,fn] of Object.entries({rootExport,rootRestore,syncExport,syncImport}))ipcMain.handle('rest:archive:'+name,async event=>{trusted(event);return fn();});
  const click=fn=>()=>fn().then(r=>{if(r?.path)dialog.showMessageBox(window,{message:'Arquivo guardado.',detail:r.path});}).catch(e=>dialog.showErrorBox('Arquivos REST',e.message));
- return {rootExport,rootRestore,syncExport,syncImport,menu:{label:'Arquivos',submenu:[
-  {label:'Criar backup root da instalação',click:click(rootExport)},{label:'Restaurar backup root',click:click(rootRestore)},{type:'separator'},
+ return {isBusy:()=>busy,rootExport,rootRestore,syncExport,syncImport,menu:{label:'Arquivos',submenu:[
+  {label:'Criar backup root da instalação',click:click(rootExport)},{label:'Restaurar cópia de segurança',click:click(rootRestore)},{type:'separator'},
   {label:'Exportar sincronização para celular',click:click(syncExport)},{label:'Importar sincronização do celular',click:click(syncImport)}
  ]}};
 };

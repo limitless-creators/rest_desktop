@@ -74,26 +74,27 @@ export default function DesktopSettings({
             >
               {en ? "Create root backup" : "Criar backup root"}
             </button>
-            {info?.isAdmin && <button
+            <button
               disabled={busy}
               className={button}
               onClick={() => run(() => window.restDesktop.rootRestore())}
             >
-              {en ? "Restore root backup" : "Restaurar backup root"}
-            </button>}
+              {en ? "Restore backup" : "Restaurar cópia de segurança"}
+            </button>
           </>
         <button
           disabled={busy}
           className={button}
           onClick={() => run(() => window.restDesktop.importData())}
         >
-          {en ? "Import data" : "Importar dados"}
+          {en ? "Import data (JSON)" : "Importar dados (JSON)"}
         </button>
       </div>
       <div className="mt-5 border-t border-slate-200 dark:border-slate-800 pt-5">
         <h4 className="font-bold">{en ? 'Sync files' : 'Arquivos de sincronização'}</h4>
         <p className="mt-2 text-sm text-slate-500">{en ? 'Exchange data and attachments with a paired phone. Import the reply on the phone to confirm changes.' : 'Troque dados e anexos com um celular emparelhado. Importe a resposta no celular para confirmar as alterações.'}</p>
         <div className="flex flex-wrap gap-3 mt-3">
+          <button disabled={busy} className={button} onClick={() => run(() => window.restDesktop.devices())}>{en ? 'Manage phones' : 'Gerir celulares'}</button>
           <button disabled={busy} className={button} onClick={() => run(() => window.restDesktop.syncExport())}>{en ? 'Export sync file' : 'Exportar sincronização'}</button>
           <button disabled={busy} className={button} onClick={() => run(() => window.restDesktop.syncImport())}>{en ? 'Import sync file' : 'Importar sincronização'}</button>
         </div>

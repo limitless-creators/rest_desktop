@@ -22,6 +22,7 @@ contextBridge.exposeInMainWorld("restDesktop", {
     ipcRenderer.on("rest:ufsa-failure", listener);
     return () => ipcRenderer.removeListener("rest:ufsa-failure", listener);
   },
+  devices:()=>ipcRenderer.invoke('rest:devices-open'),
   rootExport: () => ipcRenderer.invoke("rest:archive:rootExport"),
   rootRestore: () => ipcRenderer.invoke("rest:archive:rootRestore"),
   syncExport: () => ipcRenderer.invoke("rest:archive:syncExport"),

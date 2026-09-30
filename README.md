@@ -4,13 +4,13 @@ Aplicação de gestão comercial local para Windows x64, baseada no REST web. Re
 
 ## Utilização
 
-1. Instale o ficheiro `release/REST-Desktop-1.2.1-Setup.exe`.
+1. Instale o ficheiro `release/REST-Desktop-1.3.1-Setup.exe`.
 2. Abra REST Desktop, crie uma conta local e guarde o código de recuperação mostrado no registo.
 3. Inicie sessão e complete os dados da empresa.
 4. Utilize facturas, cotações, recibos, vendas, inventário, despesas, clientes, contactos e relatórios.
 5. Nas Definições, crie uma cópia de segurança e guarde-a também fora deste computador.
 
-A primeira conta é a administradora das cópias de toda a instalação. As contas seguintes têm dados comerciais separados. Cada utilizador Windows tem a sua própria pasta de dados. O login é local e não aceita automaticamente contas da edição cloud.
+As cópias root e o restauro de toda a instalação são autorizados pela senha da conta atualmente aberta. A exportação do formato antigo .restbackup mantém as regras legadas. As contas seguintes têm dados comerciais separados. Cada utilizador Windows tem a sua própria pasta de dados. O login é local e não aceita automaticamente contas da edição cloud.
 
 Os dados ficam em `%APPDATA%/REST Desktop/data/rest.sqlite`; a localização efectiva aparece nas Definições. Os comprovativos são guardados dentro da base SQLite, para assegurar que o backup inclui sempre os ficheiros correspondentes.
 
@@ -65,3 +65,11 @@ O instalador de desenvolvimento não tem assinatura Authenticode da Limitless, L
 Consulte [docs/validacao.md](docs/validacao.md) para o estado dos testes e limitações da entrega.
 
 Versão 1.2.1: [senha para criar o root e nomes dos celulares](docs/novidades-1.2.1.md).
+
+Versão 1.2.2: [restauro unificado de .restroot e .restbackup](docs/novidades-1.2.2.md).
+
+Versão 1.2.3: [restauro com confirmação da senha da conta atual](docs/novidades-1.2.3.md), sem depender da primeira conta.
+
+Versão 1.3.0: [gestor de celulares, estados e histórico de sincronizações](docs/gestor-celulares-1.3.0.md).
+
+Versão 1.3.1: [reautorizar celulares removidos sem substituir os dados locais](docs/reautorizar-celular-1.3.1.md). Requer mobile 1.1.2.

@@ -6,7 +6,7 @@ No formulário:
 1. Confirme a **senha da conta** atualmente aberta.
 2. Defina e repita a **senha do backup**, que protegerá o arquivo .restroot e será necessária para o restaurar.
 
-Senha incorreta ou cancelamento não geram a cópia. O backup continua a incluir toda a instalação, incluindo as outras contas e os emparelhamentos. O restauro numa instalação já configurada mantém a exigência de administrador; numa instalação vazia continua disponível antes de criar conta.
+Senha incorreta ou cancelamento não geram a cópia. O backup continua a incluir toda a instalação, incluindo as outras contas e os emparelhamentos. Desde a versão 1.2.3, o restauro numa instalação configurada exige confirmação da senha da conta atual, sem depender da primeira conta; numa instalação vazia continua disponível antes de criar conta.
 
 ## Identificar celulares
 Ao autorizar um novo emparelhamento QR, indique um nome, por exemplo “Celular da loja”.

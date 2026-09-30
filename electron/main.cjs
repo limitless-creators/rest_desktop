@@ -68,14 +68,8 @@ async function exportBackup() {
   fs.renameSync(temporary + ".sha256", choice.filePath + ".sha256");
   return { path: choice.filePath };
 }
-async function restoreBackup() {
-  await call("info");
-  const choice = await dialog.showOpenDialog(window, {
-    title: "Restaurar cópia REST",
-    properties: ["openFile"],
-    filters: [{ name: "REST Backup", extensions: ["restbackup"] }],
-  });
-  if (choice.canceled) return { canceled: true };
+async function restoreBackup(source,accountPassword) {
+  if(!(await call("rootAccess")).empty)await call("verifyRootPassword",accountPassword);
   const answer = await dialog.showMessageBox(window, {
     type: "warning",
     buttons: ["Cancelar", "Restaurar"],
@@ -87,7 +81,7 @@ async function restoreBackup() {
   });
   if (answer.response !== 1) return { canceled: true };
   await require("./mobile-menu.cjs").stop(true);
-  const result = await call("restore", choice.filePaths[0]);
+  const result = await call("restore", source, true,accountPassword);
   window.webContents.reload();
   return result;
 }
@@ -176,7 +170,7 @@ app.whenReady().then(() => {
   });
   ipcMain.handle("rest:restore", async (event) => {
     trusted(event);
-    return restoreBackup();
+    return archives.rootRestore();
   });
   ipcMain.handle("rest:import", async (event) => {
     trusted(event);
@@ -234,23 +228,24 @@ app.whenReady().then(() => {
   });
   const invokeMenu = (fn) => () =>
     fn().catch((e) => dialog.showErrorBox("REST Desktop", e.message));
-  const archives = require('./archives-menu.cjs')({window,call,root,trusted});
+  const archives = require('./archives-menu.cjs')({window,call,root,trusted,restoreLegacy:restoreBackup});
   Menu.setApplicationMenu(
     Menu.buildFromTemplate([
       archives.menu,
-      require('./mobile-menu.cjs')({window,call,root:path.join(app.getPath('userData'),'data')}),
+      require('./mobile-menu.cjs')({window,call,root:path.join(app.getPath('userData'),'data'),archives}),
       {
         label: "Ficheiro",
         submenu: [
           {
             label: "Criar cópia de segurança",
-            click: invokeMenu(exportBackup),
+            click: invokeMenu(archives.rootExport),
           },
           {
             label: "Restaurar cópia de segurança",
-            click: invokeMenu(restoreBackup),
+            click: invokeMenu(archives.rootRestore),
           },
           { type: "separator" },
+          { label: "Criar cópia antiga (.restbackup)", click: invokeMenu(exportBackup) },
           { label: "Sair", role: "quit" },
         ],
       },
@@ -291,6 +286,7 @@ app.whenReady().then(() => {
       },
     ]),
   );
+  ipcMain.handle('rest:devices-open',event=>{trusted(event);return require('./mobile-menu.cjs').openManager();});
   window.loadURL(entry);
   call("scheduledBackup").catch((e) =>
     console.error("Backup automático:", e.message),

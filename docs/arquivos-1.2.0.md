@@ -5,7 +5,7 @@ No Windows, abra **Arquivos → Criar backup root da instalação**, ou use as D
 
 Inclui todas as contas locais, dados comerciais, anexos guardados na aplicação, logótipos, carimbos, numeração, configurações, histórico de sincronização e autorizações dos celulares emparelhados. O conteúdo é comprimido e cifrado com AES-256-GCM e senha derivada por scrypt. Não inclui o instalador nem ficheiros externos que não tenham sido anexados à aplicação.
 
-Para recuperar, escolha **Arquivos → Restaurar backup root**, selecione o arquivo e indique a senha. Numa instalação vazia, pode fazê-lo antes de criar uma conta. Depois, entre com as credenciais existentes no backup. O restauro substitui os dados locais, após confirmação, e guarda uma cópia de segurança do estado anterior. Guarde a senha: não existe recuperação da senha do arquivo.
+Para recuperar, escolha **Arquivos → Restaurar cópia de segurança**, selecione o arquivo e indique a senha. Numa instalação vazia, pode fazê-lo antes de criar uma conta. Depois, entre com as credenciais existentes no backup. O restauro substitui os dados locais, após confirmação, e guarda uma cópia de segurança do estado anterior. Guarde a senha: não existe recuperação da senha do arquivo.
 
 ## Sincronização (.restsync)
 O primeiro emparelhamento continua a ser feito por QR. Depois, a troca de arquivos dispensa hotspot ou internet; basta transferir o arquivo entre os dispositivos. Cada arquivo é cifrado para o celular emparelhado e inclui os dados e anexos necessários.
@@ -38,3 +38,5 @@ Para gerar APK a partir de rest_mobile_offline/mobile_app:
 ~~~powershell
 npx eas-cli build --platform android --profile preview
 ~~~
+
+Na versão 1.2.2, o restauro em Ficheiro, Arquivos e Definições aceita .restroot e .restbackup no mesmo seletor. A opção Importar dados (JSON) é separada.

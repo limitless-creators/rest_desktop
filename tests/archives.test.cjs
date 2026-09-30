@@ -90,10 +90,10 @@ test('root backup restores all installation data, assets, counters and pairing m
  const dest=path.join(f.root,'complete.restroot');f.pcExport();
  f.pc.rootExport(dest,'backup-password',{grants:{[f.deviceId]:f.grant},preferences:{invstock_tab:'reports'}},'password123');
  assert.ok(!fs.readFileSync(dest,'utf8').includes('Root expense'));
- assert.throws(()=>f.pc.rootPreview(dest,'wrong-password'),/Senha incorrecta/);
- const p=f.pc.rootPreview(dest,'backup-password');assert.equal(p.attachments,1);assert.equal(p.extras.grants[f.deviceId].key,f.key);
+ assert.throws(()=>f.pc.rootPreview(dest,'wrong-password','password123'),/Senha incorrecta/);
+ const p=f.pc.rootPreview(dest,'backup-password','password123');assert.equal(p.attachments,1);assert.equal(p.extras.grants[f.deviceId].key,f.key);
  update(f.pc,'contacts',f.c.id,{name:'Changed'});
- f.pc.rootRestore(dest,'backup-password',p.digest);
+ f.pc.rootRestore(dest,'backup-password',p.digest,'password123');
  f.pc.auth('signInWithPassword',{email:'owner@test.local',password:'password123'});
  assert.equal(f.read(f.pc).contacts[0].name,'Original');
  assert.equal(f.read(f.pc).attachments[0].data,b64(Buffer.from('image-bytes')));
@@ -102,10 +102,10 @@ test('root backup restores all installation data, assets, counters and pairing m
 });
 test('corrupt root archive and preview mismatch never replace the database',t=>{
  const f=fixture(t),dest=path.join(f.root,'root.restroot');f.pc.rootExport(dest,'backup-password',{},'password123');
- const p=f.pc.rootPreview(dest,'backup-password');
- assert.throws(()=>f.pc.rootRestore(dest,'backup-password','changed'),/alterado/);
+ const p=f.pc.rootPreview(dest,'backup-password','password123');
+ assert.throws(()=>f.pc.rootRestore(dest,'backup-password','changed','password123'),/alterado/);
  const e=JSON.parse(fs.readFileSync(dest,'utf8'));e.data=e.data.slice(0,-8)+'AAAAAAAA';fs.writeFileSync(dest,JSON.stringify(e));
- assert.throws(()=>f.pc.rootRestore(dest,'backup-password',p.digest),/danificado/);assert.equal(f.read(f.pc).contacts.length,1);
+ assert.throws(()=>f.pc.rootRestore(dest,'backup-password',p.digest,'password123'),/danificado/);assert.equal(f.read(f.pc).contacts.length,1);
 });
 
 test('root restores into a fresh Windows installation without a temporary account',t=>{
@@ -117,14 +117,34 @@ test('root restores into a fresh Windows installation without a temporary accoun
  fresh.auth('signInWithPassword',{email:'owner@test.local',password:'password123'});
  assert.equal(fresh.query({table:'contacts'}).data[0].name,'Original');
 });
-test('any signed-in account can export root with its password; restore remains restricted',t=>{
+test('any signed-in account can export root with its password',t=>{
  const f=fixture(t),file=path.join(f.root,'admin.restroot');f.pc.rootExport(file,'backup-password',{},'password123');
  f.pc.auth('signUp',{email:'staff@test.local',password:'password123',options:{data:{name:'Staff'}}});
  f.pc.auth('signInWithPassword',{email:'staff@test.local',password:'password123'});
- assert.throws(()=>f.pc.rootPreview(file,'backup-password'),/administrador/);
+ assert.ok(f.pc.rootPreview(file,'backup-password','password123'));
  const target=path.join(f.root,'staff.restroot');
  assert.throws(()=>f.pc.rootExport(target,'backup-password',{},'wrong-password'),/Senha da conta/);assert.equal(fs.existsSync(target),false);
  assert.throws(()=>f.pc.rootExport(target,'backup-password'),/Senha da conta/);
  f.pc.rootExport(target,'backup-password',{},'password123');assert.ok(fs.existsSync(target));
  f.pc.auth('signOut');assert.throws(()=>f.pc.rootExport(target,'backup-password',{},'password123'),/sessão/);
+});
+
+test('ordinary account restores root and legacy using its own password',t=>{
+ const f=fixture(t),root=path.join(f.root,'all.restroot'),legacy=path.join(f.root,'all.restbackup');
+ f.pc.rootExport(root,'backup-password',{},'password123');f.pc.backup(legacy);
+ const login=()=>f.pc.auth('signInWithPassword',{email:'staff@test.local',password:'staff-password'});
+ const signup=()=>f.pc.auth('signUp',{email:'staff@test.local',password:'staff-password',options:{data:{name:'Staff'}}});
+ signup();login();
+ assert.throws(()=>f.pc.rootPreview(root,'backup-password'),/Senha da conta/);
+ assert.throws(()=>f.pc.rootPreview(root,'backup-password','password123'),/Senha da conta/);
+ const p=f.pc.rootPreview(root,'backup-password','staff-password');
+ assert.throws(()=>f.pc.rootRestore(root,'backup-password',p.digest,'wrong'),/Senha da conta/);
+ assert.equal(f.pc.db.prepare('SELECT count(*) n FROM users').get().n,2);
+ const restored=f.pc.rootRestore(root,'backup-password',p.digest,'staff-password');assert.ok(fs.existsSync(restored.safetyBackup));
+ assert.equal(f.pc.db.prepare('SELECT count(*) n FROM users').get().n,1);
+ signup();login();
+ assert.throws(()=>f.pc.restore(legacy,true,'wrong'),/Senha da conta/);
+ const old=f.pc.restore(legacy,true,'staff-password');assert.ok(fs.existsSync(old.safetyBackup));
+ assert.equal(f.pc.db.prepare('SELECT count(*) n FROM users').get().n,1);
+ assert.throws(()=>f.pc.rootPreview(root,'backup-password','staff-password'),/sessão/);
 });

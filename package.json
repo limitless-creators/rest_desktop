@@ -1,6 +1,6 @@
 {
   "name": "rest-desktop",
-  "version": "1.2.1",
+  "version": "1.4.0",
   "private": true,
   "description": "REST Desktop — gestão comercial local para Windows",
   "author": "Limitless, Lda",
@@ -15,7 +15,9 @@
     "pack": "npm run build && electron-builder --win --dir",
     "dist": "npm run build && electron-builder --win nsis --x64",
     "test:desktop": "node scripts/smoke.cjs",
-    "test:ui": "node scripts/ui-flows.cjs"
+    "test:ui": "node scripts/ui-flows.cjs",
+    "installer:assets": "node scripts/installer-assets.cjs",
+    "installer:ui": "node scripts/installer-ui.cjs"
   },
   "dependencies": {
     "decimal.js": "10.6.0",
@@ -80,7 +82,13 @@
       "deleteAppDataOnUninstall": false,
       "installerIcon": "electron/icon.ico",
       "uninstallerIcon": "electron/icon.ico",
-      "runAfterFinish": false
+      "runAfterFinish": false,
+      "include": "build/installer.nsh",
+      "installerHeader": "build/installer/header.bmp",
+      "installerLanguages": [
+        "pt_PT"
+      ],
+      "language": "2070"
     },
     "publish": null,
     "electronDist": "node_modules/electron/dist"

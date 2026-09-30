@@ -12,6 +12,7 @@ declare global {
  onSync:(callback:()=>void)=>()=>void;
  ufsaStatus:()=>Promise<"ready"|"offline"|"unavailable">;
  onUfsaFailure:(callback:()=>void)=>()=>void;
+ devices:()=>Promise<void>;
  rootExport:()=>Promise<any>;rootRestore:()=>Promise<any>;syncExport:()=>Promise<any>;syncImport:()=>Promise<any>;
  print:()=>Promise<any>;
  };

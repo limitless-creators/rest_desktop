@@ -98,10 +98,10 @@ module.exports=function(Service){
   }finally{if(fs.existsSync(stage))fs.unlinkSync(stage);}
  };
  Service.prototype.rootAccess=function(){
-  const empty=!this.db.prepare("SELECT id FROM users LIMIT 1").get();if(!empty)this.admin();return {empty};
+  const empty=!this.db.prepare("SELECT id FROM users LIMIT 1").get();if(!empty)this.owner();return {empty};
  };
- Service.prototype.rootPreview=function(source,password){
-  this.rootAccess();const {payload,digest}=readRoot(source,password);
+ Service.prototype.rootPreview=function(source,password,accountPassword){
+  if(!this.rootAccess().empty)this.verifyRootPassword(accountPassword);const {payload,digest}=readRoot(source,password);
   const temp=path.join(this.root,'root-check-'+crypto.randomUUID()+'.sqlite');let db;
   try{
    fs.writeFileSync(temp,unb64(payload.database),{flag:'wx'});db=new DatabaseSync(temp,{readOnly:true});
@@ -112,10 +112,10 @@ module.exports=function(Service){
    return {digest,createdAt:payload.createdAt,accounts:users.length,attachments:db.prepare('SELECT count(*) n FROM attachments').get().n,extras:payload.extras||{}};
   }finally{db?.close();if(fs.existsSync(temp))fs.unlinkSync(temp);}
  };
- Service.prototype.rootRestore=function(source,password,expected){
-  const p=this.rootPreview(source,password);if(p.digest!==expected)throw Error('O backup foi alterado. Repita a importação.');
+ Service.prototype.rootRestore=function(source,password,expected,accountPassword){
+  const p=this.rootPreview(source,password,accountPassword);if(p.digest!==expected)throw Error('O backup foi alterado. Repita a importação.');
   const {payload,digest}=readRoot(source,password);if(digest!==expected)throw Error('O backup foi alterado. Repita a importação.');const temp=path.join(this.root,'root-restore-'+crypto.randomUUID()+'.sqlite');
-  try{fs.writeFileSync(temp,unb64(payload.database),{flag:'wx'});return this.restore(temp,true);}
+  try{fs.writeFileSync(temp,unb64(payload.database),{flag:'wx'});return this.restore(temp,true,accountPassword);}
   finally{if(fs.existsSync(temp))fs.unlinkSync(temp);}
  };
 };
